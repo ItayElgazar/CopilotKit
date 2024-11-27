@@ -1,0 +1,83 @@
+---
+title: "Step 5: Stream Progress"
+---
+
+Now that we have integrated the LangGraph agent into the application, we can start utilizing features that will enhance the
+user agentic experience even further. For example, what if we could stream the progress of a search to the user?
+
+In this step, we'll be doing just that. To do so
+
+## The App's State
+
+Let's quickly review how the app's state works. Open up the [`lib/hooks/use-trips.tsx`](https://github.com/CopilotKit/CopilotKit/examples/coagents-travel/coagents-travel-tutorial-start/lib/hooks/use-trips.tsx) file.
+
+At a glance, we can see that the file exposes a provider (`TripsProvider`), which defines a useful things:
+
+- The state of the trips (`trips`)
+- A function to add a trip (`addTrip`)
+- A function to update a trip (`updateTrip`)
+- A function to delete a trip (`deleteTrip`)
+
+All of this is consumable by a `useTrips` hook, which we use in the rest of the application (feel free to check out the `TripCard`, `TripContent` and `TripSelect` components).
+
+This resembles the majority of React apps, where frontend state, either for a feature or the entire app, is managed by a context or state management library.
+
+## The `useCoAgent` hook
+
+LangGraph agents are stateful, meaning that they can maintain their own state. We saw this earlier when we were using LangGraph Studio, in the bottom left. We
+also have the application's state through React.
+
+Our current goal is to create a bidirectional connection between these two states. Luckily, the [`useCoAgent`](/reference/hooks/useCoAgent) hook makes this easy.
+
+```tsx title="lib/hooks/use-trips.tsx" {3,8-11}
+// ...
+import { Trip, Place, defaultTrips } from "@/lib/trips";
+import { useCoAgent } from "@copilotkit/react-core"; // [!code highlight]
+
+export const TripsProvider = ({ children }: { children: ReactNode }) => {
+  // [!code --:5]
+  const [state, setState] = useState<{ trips: Trip[], selected_trip_id: string | null }>({ 
+    trips: defaultTrips, 
+    selected_trip_id: defaultTrips && defaultTrips[0] ? defaultTrips[0].id : null 
+  });
+  // [!code ++:9]
+  const { state, setState } = useCoAgent<{ trips: Trip[], selected_trip_id: string | null }>(
+    name: "travel",
+    initialState: {
+      trips: defaultTrips,
+      selected_trip_id: defaultTrips[0].id,
+    },
+  );
+
+  // ...
+```
+
+<Callout>
+The `useCoAgent` hook is generic. What this means is that we can specify a type for that represents the state of the LangGraph agent.
+If you are going to specify a type, you should be very careful that the type has the same shape as the state of your LangGraph agent.
+
+It is not recommended, but you can ditch the type parameter and instead get an `any` type.
+</Callout>
+
+In this example, we use the `useCoAgent` hook to wire up the application's state to the LangGraph agent's state.
+- For the `name` parameter, we pass the name of the graph as defined in `agent/langgraph.json`.
+- For the `initialState` parameter, we pass the initial state of the LangGraph agent which is already defined in `@/lib/trips.ts`.
+
+## Try it out!
+
+Now, try it out! Ask the Copilot something about the state of your trips. For example:
+
+> What trips do I currently have?
+
+The state is shared between the application and the agent, so you can add a new trip manually, ask the same question,
+and the agent will know about it.
+
+> (After you've added a trip) What trips do I have now?
+
+In the same vein, you can ask the agent to update your trips and it will render in the UI. For example:
+
+> Add some hotels to my NYC trip
+
+Its really that simple, you have now integrated a LangGraph agent into the application as an agentic copilot. In the following 
+steps, we'll be improving the user experience but the core agent is now accessible through the application's chat interface.
+
